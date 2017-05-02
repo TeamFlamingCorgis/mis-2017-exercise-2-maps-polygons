@@ -5,7 +5,9 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -70,30 +72,58 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        goToLocationZoom(50.9816511,11.3173627,20);
+        goToLocationZoom(50.9816511,11.3173627,10, "Weimar");
 
-        // Add a marker in Sydney and move the camera
-        LatLng sydney = new LatLng(-34, 151);
-        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+        Button goToBtn = (Button) findViewById(R.id.goBtn);
+        goToBtn.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v){
+                try{
+                    geoLocate(v);
+                }catch(IOException ioe){
+                    Log.e("LOL", "lol");
+                }
+
+            }
+        });
     }
-    private void goToLocation(double lat, double lng)
+
+
+    /**
+     * Method name: goToLocation
+     * Modifier:    private
+     * Purpose:     Makes the map go to a specified location, adds marker
+     * Parameters:  double, double, String
+     * Returns:     void
+     */
+    private void goToLocation(double lat, double lng, String placeName)
     {
-        LatLng ll=new LatLng(lat,lng);
-        CameraUpdate update= CameraUpdateFactory.newLatLng(ll);
-        mMap.moveCamera(update);
+        LatLng newLocation = new LatLng(lat,lng);
+        CameraUpdate updateCam = CameraUpdateFactory.newLatLng(newLocation);
+        mMap.addMarker(new MarkerOptions().position(newLocation).title("Marker in " + placeName));
+        mMap.moveCamera(updateCam);
     }
-    private void goToLocationZoom(double lat, double lng, float zoom)
+
+    /**
+     * Method name: goToLocation
+     * Modifier:    private
+     * Purpose:     Makes the map go to a specified location, puts a marker, zooms in
+     * Parameters:  double, double, float
+     * Returns:     void
+     */
+    private void goToLocationZoom(double lat, double lng, float zoom, String placeName)
     {
-        LatLng ll=new LatLng(lat,lng);
-        CameraUpdate update= CameraUpdateFactory.newLatLngZoom(ll,zoom);
-        mMap.moveCamera(update);
+        LatLng newLocation = new LatLng(lat,lng);
+        CameraUpdate updateCam = CameraUpdateFactory.newLatLngZoom(newLocation, zoom);
+        mMap.addMarker(new MarkerOptions().position(newLocation).title("Marker in " + placeName));
+        mMap.moveCamera(updateCam);
     }
+
     public void geoLocate(View view) throws IOException {
-        EditText et=(EditText) findViewById(R.id.editText);
+        EditText et=(EditText) findViewById(R.id.inputTxt);
         String location= et.getText().toString();
         Geocoder gc = new Geocoder(this);
-       List<Address> list= gc.getFromLocationName(location,1);
+        List<Address> list= gc.getFromLocationName(location,1);
         Address address=list.get(0);
         String locality=address.getLocality();
 
@@ -101,7 +131,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         double lat=address.getLatitude();
         double lng=address.getLongitude();
-        goToLocationZoom(lat,lng,20);
+        goToLocationZoom(lat,lng,10, locality);
+
+
     }
 }
 

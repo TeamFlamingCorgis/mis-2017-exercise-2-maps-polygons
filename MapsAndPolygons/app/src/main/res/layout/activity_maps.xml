@@ -7,39 +7,47 @@
     android:padding="10dp"
     tools:context="com.example.zeroliam.mapsandpolygons.MapsActivity">
 
+
+        <EditText
+            android:id="@+id/inputTxt"
+            android:layout_width="280dp"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerHorizontal="true"
+            android:hint="Where do you want to go?"
+            android:inputType="text"
+            android:textSize="18sp" />
+
+        <Button
+            android:id="@+id/goBtn"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:onClick="geoLocate"
+            android:layout_alignBaseline="@id/inputTxt"
+            android:layout_alignParentRight="true"
+            android:text="Go" />
+
+        <Button
+            android:id="@+id/createPoly"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:onClick="geoLocate"
+            android:layout_below="@+id/inputTxt"
+            android:layout_marginTop="6dp"
+            android:text="Start Polygon" />
+
         <fragment xmlns:android="http://schemas.android.com/apk/res/android"
             xmlns:tools="http://schemas.android.com/tools"
             android:id="@+id/map"
             android:name="com.google.android.gms.maps.SupportMapFragment"
             android:layout_width="match_parent"
+            android:layout_below="@+id/createPoly"
             xmlns:map="http://schemas.android.com/apk/res-auto"
             android:layout_height="match_parent"
             android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="112dp"
              />
-<RelativeLayout
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content">
-        <EditText
-            android:id="@+id/editText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:layout_marginStart="66dp"
-            android:ems="10"
-            android:hint="where do you want to go"
-            android:inputType="textPersonName" />
-
-        <Button
-            android:id="@+id/button2"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:onClick="geoLocate"
-            android:layout_alignStart="@+id/editText"
-            android:layout_marginStart="29dp"
-            android:layout_marginTop="29dp"
-            android:text="Go" />
-
-</RelativeLayout>
 </RelativeLayout>
