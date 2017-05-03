@@ -46,6 +46,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Button polygonBtn;
     private EditText et;
     private ArrayList<Marker> polyMarkers;
+    MarkerOptions centroid;
+    private Marker centralMarker;
     private Polygon shape;
     private int polyPoints;
     private boolean isDrawing = false;
@@ -110,7 +112,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         final Geocoder gc = new Geocoder(this);
 
         //Start in Weimar
-        goToLocationZoom(50.9816511,11.3173627,10, "Weimar");
+        goToLocationZoom(50.9816511,11.3173627,10, null);
 
         //Setup the interaction
         if (mMap != null) {
@@ -187,21 +189,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      */
 
     /**
-     * Method name: goToLocation
-     * Modifier:    private
-     * Purpose:     Makes the map go to a specified location, adds marker
-     * Parameters:  double, double, String
-     * Returns:     void
-     */
-    private void goToLocation(double lat, double lng, String placeName)
-    {
-        LatLng newLocation = new LatLng(lat,lng);
-        CameraUpdate updateCam = CameraUpdateFactory.newLatLng(newLocation);
-        mMap.addMarker(new MarkerOptions().position(newLocation).title("Marker in " + placeName));
-        mMap.moveCamera(updateCam);
-    }
-
-    /**
      * Method name: goToLocationZoom
      * Modifier:    private
      * Purpose:     Makes the map go to a specified location, puts a marker, zooms in
@@ -212,8 +199,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     {
         LatLng newLocation = new LatLng(lat,lng);
         CameraUpdate updateCam = CameraUpdateFactory.newLatLngZoom(newLocation, zoom);
-        MapsActivity.this.setMarker(lat, lng, placeName);
-//        mMap.addMarker(new MarkerOptions().position(newLocation).title("Marker in " + placeName));
+        if(placeName != null){
+            MapsActivity.this.setMarker(lat, lng, placeName);
+        }
         mMap.moveCamera(updateCam);
     }
 
@@ -249,7 +237,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      * Returns:     void
      */
     private void setMarker(double lat, double lng, String locality){
-
         //Setup the marker options
         MarkerOptions options = new MarkerOptions()
         .draggable(true)
@@ -262,9 +249,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         //Updates the number of points based on the number of markers
         setPolygonPoints(polyMarkers.size());
-//        drawPolygon(polyPoints, markers, shape);
     }
-
 
     /**
      * *******************************************************
@@ -294,22 +279,36 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         return polyPoints;
     }
 
+    /**
+     * Method name: createPolygon
+     * Modifier:    public
+     * Purpose:     Creates the shape only if there is no shape already. If it is, it deletes it.
+     * Parameters:  View
+     * Returns:     void
+     */
     public void createPolygon (View view) throws Exception {
         isDrawing = !isDrawing;
-        Log.e("isDrawing == ", String.valueOf(isDrawing));
 
         if (isDrawing) {
             polygonBtn.setText("Clear Polygon");
-            Log.e("Size = ", String.valueOf(polyMarkers.size()));
             drawPolygon(getPolygonPoints(), polyMarkers);
+
+            //Sets the marker for the center of the polygon
+            regCentroid(polyMarkers);
+
         } else {
             polygonBtn.setText("Start Polygon");
-            Log.e("Size = ", String.valueOf(polyMarkers.size()));
             removeEverything();
         }
     }
 
-
+    /**
+     * Method name: drawPolygon
+     * Modifier:    private
+     * Purpose:     Draws the polygon and a stroke on it based on the markers position.
+     * Parameters:  int, ArrayList<Marker>
+     * Returns:     void
+     */
     private void drawPolygon(int polyPoints, ArrayList<Marker> markers) {
         PolygonOptions options = new PolygonOptions()
                 .fillColor(0x330000FF)
@@ -322,7 +321,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         shape = mMap.addPolygon(options);
     }
 
-
+    /**
+     * Method name: removeEverything
+     * Modifier:    private
+     * Purpose:     Clears everything from the map
+     * Parameters:  none
+     * Returns:     void
+     */
     private void removeEverything() {
         for (Marker marker : polyMarkers) {
             marker.remove();
@@ -331,7 +336,58 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         polyMarkers.clear();
         shape.remove();
         shape = null;
+        mMap.clear();
     }
+
+    /**
+     * Method name: calculateArea
+     * Modifier:    private
+     * Purpose:     Calculates the area of the polygon. It also works for triangles!
+     * Parameters:  ArrayList<Marker>
+     * Returns:     double
+     */
+    private double calculateArea(ArrayList<Marker> markers) {
+        double totalArea = 0, coordSum = 0;
+
+        for(int i = 0; i < markers.size(); i++){
+            if(i < markers.size() - 1){
+                coordSum += (markers.get(i).getPosition().latitude * markers.get(i + 1).getPosition().longitude) + (markers.get(i).getPosition().longitude * markers.get(i + 1).getPosition().latitude);
+            }else{
+                coordSum += (markers.get(i).getPosition().latitude * markers.get(0).getPosition().longitude) + (markers.get(i).getPosition().longitude * markers.get(0).getPosition().latitude);
+            }
+        }
+
+        totalArea = Math.abs(coordSum / 2);
+
+        return Math.floor(totalArea);
+    }
+
+    /**
+     * Method name: regCentroid
+     * Modifier:    private
+     * Purpose:     Calculates the centroid of an irregular polygon, including triangles
+     * Parameters:  ArrayList<Marker>
+     * Returns:     void
+     */
+    private void regCentroid(ArrayList<Marker> markers){
+        double originX = 0, originY = 0, centX = 0, centY = 0;
+
+        for(int i = 0; i < markers.size(); i++){
+            originX += markers.get(i).getPosition().latitude;
+            originY += markers.get(i).getPosition().longitude;
+        }
+
+        centX = originX / markers.size();
+        centY = originY / markers.size();
+
+        //Setup the marker options
+        centroid = new MarkerOptions()
+                .draggable(false)
+                .title("Area: " + calculateArea(markers))
+                .position(new LatLng(centX, centY));
+        mMap.addMarker(centroid);
+    }
+
 
 }
 
