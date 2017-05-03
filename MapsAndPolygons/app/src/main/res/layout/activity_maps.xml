@@ -26,14 +26,14 @@
             android:onClick="geoLocate"
             android:layout_alignBaseline="@id/inputTxt"
             android:layout_alignParentRight="true"
-            android:text="Go" />
+            android:text="Go"/>
 
         <Button
-            android:id="@+id/createPoly"
+            android:id="@+id/createPolyBtn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
-            android:onClick="geoLocate"
+            android:onClick="createPolygon"
             android:layout_below="@+id/inputTxt"
             android:layout_marginTop="6dp"
             android:text="Start Polygon" />
@@ -43,7 +43,7 @@
             android:id="@+id/map"
             android:name="com.google.android.gms.maps.SupportMapFragment"
             android:layout_width="match_parent"
-            android:layout_below="@+id/createPoly"
+            android:layout_below="@+id/createPolyBtn"
             xmlns:map="http://schemas.android.com/apk/res-auto"
             android:layout_height="match_parent"
             android:layout_alignParentStart="true"

@@ -26,21 +26,38 @@ import java.util.List;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
+    //Declare elements here
     private GoogleMap mMap;
+    private Button goToBtn;
+    private Button polygonBtn;
+    private EditText et;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
         if(googleServicesAvailable()){
-            Toast.makeText(this, "Perfect", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Hi there!", Toast.LENGTH_SHORT).show();
         }
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        //Call elements from the activity xml
+        //The onClick method call is defined in the xml view, cool isn't it? :D
+        goToBtn = (Button) findViewById(R.id.goBtn);
+        polygonBtn = (Button) findViewById(R.id.createPolyBtn);
+        et=(EditText) findViewById(R.id.inputTxt);
     }
 
+    /**
+     * Method name: googleServicesAvailable
+     * Modifier:    public
+     * Purpose:     Tries to connect to Google Services in order to make the map work
+     * Parameters:  none
+     * Returns:     boolean
+     */
     public boolean googleServicesAvailable()
     {
         GoogleApiAvailability api=GoogleApiAvailability.getInstance();
@@ -53,7 +70,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             dialog.show();
         }
         else {
-            Toast.makeText(this, "can't connect to google service", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Can't connect to Google Services", Toast.LENGTH_SHORT).show();
         }
         return false;
     }
@@ -73,21 +90,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         goToLocationZoom(50.9816511,11.3173627,10, "Weimar");
-
-        Button goToBtn = (Button) findViewById(R.id.goBtn);
-        goToBtn.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v){
-                try{
-                    geoLocate(v);
-                }catch(IOException ioe){
-                    Log.e("LOL", "lol");
-                }
-
-            }
-        });
     }
-
 
     /**
      * Method name: goToLocation
@@ -119,20 +122,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.moveCamera(updateCam);
     }
 
+
+    /**
+     * Method name: geoLocate
+     * Modifier:    public
+     * Purpose:     Search and mark a place from the EditText
+     * Parameters:  View
+     * Returns:     void
+     */
     public void geoLocate(View view) throws IOException {
-        EditText et=(EditText) findViewById(R.id.inputTxt);
         String location= et.getText().toString();
         Geocoder gc = new Geocoder(this);
         List<Address> list= gc.getFromLocationName(location,1);
         Address address=list.get(0);
         String locality=address.getLocality();
 
+        //Where are we now?
         Toast.makeText(this, locality, Toast.LENGTH_LONG).show();
 
+        //Go to location, zoom, and mark it
         double lat=address.getLatitude();
         double lng=address.getLongitude();
         goToLocationZoom(lat,lng,10, locality);
-
 
     }
 }
