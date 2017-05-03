@@ -6,8 +6,6 @@
     android:layout_height="match_parent"
     android:padding="10dp"
     tools:context="com.example.zeroliam.mapsandpolygons.MapsActivity">
-
-
         <EditText
             android:id="@+id/inputTxt"
             android:layout_width="280dp"
