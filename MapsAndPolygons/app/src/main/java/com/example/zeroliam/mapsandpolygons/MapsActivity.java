@@ -45,6 +45,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Button goToBtn;
     private Button polygonBtn;
     private EditText et;
+    private ArrayList<Marker> polyMarkers;
+    private Polygon shape;
+    private int polyPoints;
+    private boolean isDrawing = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,14 +106,26 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        polyMarkers = new ArrayList<Marker>();
+        final Geocoder gc = new Geocoder(this);
 
+        //Start in Weimar
         goToLocationZoom(50.9816511,11.3173627,10, "Weimar");
+
+        //Setup the interaction
         if (mMap != null) {
 
             mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
                 @Override
                 public void onMapLongClick(LatLng latLng) {
-                    MapsActivity.this.setMarker("local", latLng.latitude, latLng.longitude);
+                    try{
+                        List<Address> list= gc.getFromLocation(latLng.latitude, latLng.longitude, 1);
+                        Address address = list.get(0);
+                        String locality = address.getLocality();
+                        MapsActivity.this.setMarker(latLng.latitude, latLng.longitude, locality);
+                    }catch(IOException ioe){
+
+                    }
                 }
             });
             mMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
@@ -165,6 +181,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     /**
+     * *******************************************************
+     * **************  MAP METHODS GO HERE   *****************
+     * *******************************************************
+     */
+
+    /**
      * Method name: goToLocation
      * Modifier:    private
      * Purpose:     Makes the map go to a specified location, adds marker
@@ -180,7 +202,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     /**
-     * Method name: goToLocation
+     * Method name: goToLocationZoom
      * Modifier:    private
      * Purpose:     Makes the map go to a specified location, puts a marker, zooms in
      * Parameters:  double, double, float
@@ -190,7 +212,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     {
         LatLng newLocation = new LatLng(lat,lng);
         CameraUpdate updateCam = CameraUpdateFactory.newLatLngZoom(newLocation, zoom);
-        mMap.addMarker(new MarkerOptions().position(newLocation).title("Marker in " + placeName));
+        MapsActivity.this.setMarker(lat, lng, placeName);
+//        mMap.addMarker(new MarkerOptions().position(newLocation).title("Marker in " + placeName));
         mMap.moveCamera(updateCam);
     }
 
@@ -218,86 +241,97 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         goToLocationZoom(lat,lng,10, locality);
     }
 
-    Circle circle;
-//    Marker marker1;
-//    Marker marker2;
-//    Polyline line;
+    /**
+     * Method name: setMarker
+     * Modifier:    private
+     * Purpose:     Sets and adds marker
+     * Parameters:  String, double, double, ArrayList<Marker>
+     * Returns:     void
+     */
+    private void setMarker(double lat, double lng, String locality){
 
-    ArrayList<Marker> markers = new ArrayList<Marker>();
-    static final int POLYGON_POINTS = 6;
-    Polygon shape;
-
-    private void setMarker(String locality, double lat, double lng) {
-
-        if (markers.size() == POLYGON_POINTS) {
-            removeEverything();
-        }
+        //Setup the marker options
         MarkerOptions options = new MarkerOptions()
-                .title(locality)
-                .draggable(true)
-                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher))
-                .position(new LatLng(lat, lng));
+        .draggable(true)
+        .title("Marker in " + locality)
+        .position(new LatLng(lat, lng));
 
-        markers.add(mMap.addMarker(options));
+        //Adds marker
+        polyMarkers.add(mMap.addMarker(options));
+        Log.e("polyMarkers ==== ", String.valueOf(polyMarkers));
 
-        if (markers.size() == POLYGON_POINTS) {
-            drawPolygon();
-        }
-//        if (marker1 == null) {
-//            marker1 = mMap.addMarker(options);
-//        } else if (marker2 == null) {
-//            marker1 = mMap.addMarker(options);
-//            drawLine();
-//        } else {
-//            removeEverything();
-//            marker1 = mMap.addMarker(options);
-//        }
-//        circle = drawCircle(new LatLng(lat, lng));
-//    private Circle drawCircle(LatLng latLng) {
-//
-//        CircleOptions options=new CircleOptions()
-//                        .center(latLng)
-//                        .radius(1000)
-//                        .fillColor(0x33FF0000)
-//                        .strokeColor(Color.BLUE)
-//                        .strokeWidth(3);
-//        return mMap.addCircle(options);
-//    }
-
-
+        //Updates the number of points based on the number of markers
+        setPolygonPoints(polyMarkers.size());
+//        drawPolygon(polyPoints, markers, shape);
     }
 
-    private void drawPolygon() {
+
+    /**
+     * *******************************************************
+     * ************  POLYGON METHODS GO HERE   ***************
+     * *******************************************************
+     */
+
+    /**
+     * Method name: setPolygonPoints
+     * Modifier:    public
+     * Purpose:     Sets the amount of polygon points available
+     * Parameters:  int
+     * Returns:     void
+     */
+    public void setPolygonPoints(int numPoints){
+        polyPoints = numPoints;
+    }
+
+    /**
+     * Method name: getPolygonPoints
+     * Modifier:    public
+     * Purpose:     Gets the amount of polygon points available
+     * Parameters:  none
+     * Returns:     int
+     */
+    public int getPolygonPoints(){
+        return polyPoints;
+    }
+
+    public void createPolygon (View view) throws Exception {
+        isDrawing = !isDrawing;
+        Log.e("isDrawing == ", String.valueOf(isDrawing));
+
+        if (isDrawing) {
+            polygonBtn.setText("Clear Polygon");
+            Log.e("Size = ", String.valueOf(polyMarkers.size()));
+            drawPolygon(getPolygonPoints(), polyMarkers);
+        } else {
+            polygonBtn.setText("Start Polygon");
+            Log.e("Size = ", String.valueOf(polyMarkers.size()));
+            removeEverything();
+        }
+    }
+
+
+    private void drawPolygon(int polyPoints, ArrayList<Marker> markers) {
         PolygonOptions options = new PolygonOptions()
                 .fillColor(0x330000FF)
                 .strokeWidth(3)
                 .strokeColor(Color.BLUE);
 
-        for (int i = 0; i < POLYGON_POINTS; i++) {
+        for (int i = 0; i < polyPoints; i++) {
             options.add(markers.get(i).getPosition());
         }
         shape = mMap.addPolygon(options);
     }
-//
-//    private void drawLine() {
-//
-//        PolylineOptions options = new PolylineOptions()
-//                        .add(marker1.getPosition())
-//                        .add(marker2.getPosition())
-//                        .color(Color.BLUE)
-//                        .width(3);
-//
-//        line=mMap.addPolyline(options);
-//    }
+
 
     private void removeEverything() {
-        for (Marker marker : markers) {
+        for (Marker marker : polyMarkers) {
             marker.remove();
 
         }
-        markers.clear();
+        polyMarkers.clear();
         shape.remove();
         shape = null;
     }
+
 }
 
