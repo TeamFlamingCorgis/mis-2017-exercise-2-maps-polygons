@@ -6,7 +6,6 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -20,26 +19,17 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptor;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.Circle;
-import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
-import com.google.android.gms.maps.model.Polyline;
-import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.maps.android.SphericalUtil;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
-
-import static android.R.id.list;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
@@ -50,7 +40,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private EditText et;
     private ArrayList<Marker> polyMarkers;
     MarkerOptions centroid;
-    private Marker centralMarker;
     private Polygon shape;
     private int polyPoints;
     private boolean isDrawing = false;
@@ -75,11 +64,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     /**
+     * *****************************************************
      * Method name: googleServicesAvailable
      * Modifier:    public
      * Purpose:     Tries to connect to Google Services in order to make the map work
      * Parameters:  none
      * Returns:     boolean
+     * *****************************************************
      */
     public boolean googleServicesAvailable()
     {
@@ -192,11 +183,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      */
 
     /**
+     * *****************************************************
      * Method name: goToLocationZoom
      * Modifier:    private
      * Purpose:     Makes the map go to a specified location, puts a marker, zooms in
      * Parameters:  double, double, float
      * Returns:     void
+     * *****************************************************
      */
     private void goToLocationZoom(double lat, double lng, float zoom, String placeName)
     {
@@ -208,13 +201,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.moveCamera(updateCam);
     }
 
-
     /**
+     * *****************************************************
      * Method name: geoLocate
      * Modifier:    public
      * Purpose:     Search and mark a place from the EditText
      * Parameters:  View
      * Returns:     void
+     * *****************************************************
      */
     public void geoLocate(View view) throws IOException {
         String location= et.getText().toString();
@@ -233,11 +227,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     /**
+     * *****************************************************
      * Method name: setMarker
      * Modifier:    private
      * Purpose:     Sets and adds marker
      * Parameters:  String, double, double, ArrayList<Marker>
      * Returns:     void
+     * *****************************************************
      */
     private void setMarker(double lat, double lng, String locality){
         //Setup the marker options
@@ -248,7 +244,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         //Adds marker
         polyMarkers.add(mMap.addMarker(options));
-        Log.e("polyMarkers ==== ", String.valueOf(polyMarkers));
 
         //Updates the number of points based on the number of markers
         setPolygonPoints(polyMarkers.size());
@@ -261,33 +256,39 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      */
 
     /**
+     * *****************************************************
      * Method name: setPolygonPoints
      * Modifier:    public
      * Purpose:     Sets the amount of polygon points available
      * Parameters:  int
      * Returns:     void
+     * *****************************************************
      */
     public void setPolygonPoints(int numPoints){
         polyPoints = numPoints;
     }
 
     /**
+     * *****************************************************
      * Method name: getPolygonPoints
      * Modifier:    public
      * Purpose:     Gets the amount of polygon points available
      * Parameters:  none
      * Returns:     int
+     * *****************************************************
      */
     public int getPolygonPoints(){
         return polyPoints;
     }
 
     /**
+     * *****************************************************
      * Method name: createPolygon
      * Modifier:    public
      * Purpose:     Creates the shape only if there is no shape already. If it is, it deletes it.
      * Parameters:  View
      * Returns:     void
+     * *****************************************************
      */
     public void createPolygon (View view) throws Exception {
         isDrawing = !isDrawing;
@@ -312,11 +313,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     /**
+     * *****************************************************
      * Method name: drawPolygon
      * Modifier:    private
      * Purpose:     Draws the polygon and a stroke on it based on the markers position.
      * Parameters:  int, ArrayList<Marker>
      * Returns:     void
+     * *****************************************************
      */
     private void drawPolygon(int polyPoints, ArrayList<Marker> markers) {
         PolygonOptions options = new PolygonOptions()
@@ -331,11 +334,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     /**
+     * *****************************************************
      * Method name: removeEverything
      * Modifier:    private
      * Purpose:     Clears everything from the map
      * Parameters:  none
      * Returns:     void
+     * *****************************************************
      */
     private void removeEverything() {
         for (Marker marker : polyMarkers) {
@@ -349,18 +354,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     /**
-     * Method name: calculateArea
+     * Method name: calculateAreaPolygon
      * Modifier:    private
      * Purpose:     Calculates the area of the polygon. It also works for triangles!
      * Parameters:  ArrayList<Marker>
      * Returns:     double
      * *****************************************************
      * ******************* NOTES!!!! ***********************
-     * MADE BUT NEVER USED! Returns a vector and not the
-     * actual area in meters nor kilometers
+     * MADE BUT NEVER USED! WHY? WELL:
+     * (1)  Returns a vector and not the actual area in mts.
+     * (2)  This works on a planar polygon, but the Earth is
+     *      round (wow, I know) and that changes everything.
+     * (3)  I'm keeping it because I did my research and my
+     *      time is valuable (I got to love this math!)
      * *****************************************************
      */
-    private double calculateArea(ArrayList<Marker> markers) {
+    private double calculateAreaPolygon(ArrayList<Marker> markers) {
         //Variables for the area and the sum of the coordinates
         double totalArea = 0, coordSum = 0;
         //Now we need to take each vertex (given by the markers coordinates) and then
@@ -399,11 +408,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     /**
+     * *****************************************************
      * Method name: getArea
      * Modifier:    private
      * Purpose:     Calculates the area of the polygon using SphericalUtil (in square mts)
      * Parameters:  ArrayList<Marker>
      * Returns:     double
+     * *****************************************************
      */
     private double getArea(ArrayList<Marker> markers){
         double totalAreaOut = 0;
@@ -421,11 +432,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     /**
+     * *****************************************************
      * Method name: triCentroid
      * Modifier:    private
      * Purpose:     Calculates the centroid of any triangle
      * Parameters:  ArrayList<Marker>
      * Returns:     void
+     * *****************************************************
      */
     private void triCentroid(ArrayList<Marker> markers){
         //This one takes less time, we only have three vertices in a triangle
@@ -456,11 +469,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     /**
+     * *****************************************************
      * Method name: regCentroid
      * Modifier:    private
      * Purpose:     Calculates the centroid of any polygon
      * Parameters:  ArrayList<Marker>
      * Returns:     void
+     * *****************************************************
      */
     private void regCentroid(ArrayList<Marker> markers){
         //Yes, we are looping again among the vertices so we need those position vars once more
