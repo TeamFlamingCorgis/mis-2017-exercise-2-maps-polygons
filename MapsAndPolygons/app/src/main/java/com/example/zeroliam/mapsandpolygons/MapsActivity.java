@@ -1,6 +1,7 @@
 package com.example.zeroliam.mapsandpolygons;
 
 import android.app.Dialog;
+import android.content.Context;
 import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
@@ -11,6 +12,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.content.SharedPreferences;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
@@ -35,11 +37,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     //Declare elements here
     private GoogleMap mMap;
+    public static final String MAPS_AND_POLYGONS_PREFS = "MapsAndPolygonsPrefs";
+    public static final String markerTitle = "markerTitleKey";
+    public static final String markerLocation = "markerLocationKey";
+    SharedPreferences sharedprefs;
     private Button goToBtn;
     private Button polygonBtn;
     private EditText et;
     private ArrayList<Marker> polyMarkers;
-    MarkerOptions centroid;
+    MarkerOptions tricentroid, regcentroid;
+    Marker triCenter, regCenter;
     private Polygon shape;
     private int polyPoints;
     private boolean isDrawing = false;
@@ -61,6 +68,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         goToBtn = (Button) findViewById(R.id.goBtn);
         polygonBtn = (Button) findViewById(R.id.createPolyBtn);
         et=(EditText) findViewById(R.id.inputTxt);
+        sharedprefs = MapsActivity.this.getSharedPreferences(MAPS_AND_POLYGONS_PREFS, Context.MODE_PRIVATE);
+
     }
 
     /**
@@ -244,9 +253,26 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         //Adds marker
         polyMarkers.add(mMap.addMarker(options));
-
+        //Writes it on the SharedPreferences
+//        writeToPrefs(polyMarkers);
+        for(int i = 0; i < polyMarkers.size(); i++){
+            writeToPrefs(polyMarkers.get(i));
+        }
         //Updates the number of points based on the number of markers
         setPolygonPoints(polyMarkers.size());
+    }
+
+    public void writeToPrefs(Marker markers){
+        //Makes an editor to add ingo into the SharedPreferences
+        SharedPreferences.Editor editor = sharedprefs.edit();
+
+        //Writes each marker info into the sharedpreferences
+        editor.putString(markerTitle, markers.getTitle());
+        editor.putString(markerLocation, markers.getPosition().toString());
+        //Commits the changes
+        editor.apply();
+        editor.commit();
+
     }
 
     /**
@@ -294,14 +320,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         isDrawing = !isDrawing;
 
         if (isDrawing) {
-            polygonBtn.setText("Clear Polygon");
+            polygonBtn.setText("End Polygon");
             drawPolygon(getPolygonPoints(), polyMarkers);
 
             //Sets the marker for the center of the polygon
             if(polyMarkers.size() == 3){
                 triCentroid(polyMarkers);
             }else if(polyMarkers.size() > 3){
-                regCentroid(polyMarkers);
+                triCentroid(polyMarkers);
             }else{
                 Toast.makeText(this, "THAT'S NOT A POLYGON!!", Toast.LENGTH_LONG).show();
             }
@@ -461,11 +487,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         centY = sumY / markers.size();
 
         //Setup the marker options
-        centroid = new MarkerOptions()
+        tricentroid = new MarkerOptions()
                 .draggable(false)
                 .title("Area: " + printArea + " Sq Km")
                 .position(new LatLng(centX, centY));
-        mMap.addMarker(centroid);
+        triCenter = mMap.addMarker(tricentroid);
+
+        //Writes it on the SharedPreferences
+        writeToPrefs(triCenter);
     }
 
     /**
@@ -525,11 +554,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         centY = vertYSum / (ourPolyArea * 6);
 
         //Setup the marker options
-        centroid = new MarkerOptions()
+        regcentroid = new MarkerOptions()
                 .draggable(false)
                 .title("Area: " + printArea + " Sq Km")
                 .position(new LatLng(centX, centY));
-        mMap.addMarker(centroid);
+        regCenter = mMap.addMarker(regcentroid);
+        writeToPrefs(regCenter);
     }
 
 
