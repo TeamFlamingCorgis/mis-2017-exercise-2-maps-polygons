@@ -31,8 +31,11 @@ import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.maps.android.SphericalUtil;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -294,7 +297,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             drawPolygon(getPolygonPoints(), polyMarkers);
 
             //Sets the marker for the center of the polygon
-            regCentroid(polyMarkers);
+            if(polyMarkers.size() == 3){
+                triCentroid(polyMarkers);
+            }else if(polyMarkers.size() > 3){
+                regCentroid(polyMarkers);
+            }else{
+                Toast.makeText(this, "THAT'S NOT A POLYGON!!", Toast.LENGTH_LONG).show();
+            }
 
         } else {
             polygonBtn.setText("Start Polygon");
@@ -345,45 +354,165 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      * Purpose:     Calculates the area of the polygon. It also works for triangles!
      * Parameters:  ArrayList<Marker>
      * Returns:     double
+     * *****************************************************
+     * ******************* NOTES!!!! ***********************
+     * MADE BUT NEVER USED! Returns a vector and not the
+     * actual area in meters nor kilometers
+     * *****************************************************
      */
     private double calculateArea(ArrayList<Marker> markers) {
+        //Variables for the area and the sum of the coordinates
         double totalArea = 0, coordSum = 0;
+        //Now we need to take each vertex (given by the markers coordinates) and then
+        //plug it into the formula for Area of a Polygon:
+        // Area = abs( (vertex coordinates sum) / 2 ), in which
+        //Vertex Coord Sum = [( x(n) * y(n + 1) ) - ( y(n) * x(n + 1) ) + ... +  x(n) * y(0) ) - ( y(n) * x(0) )]
+        // ^^^ and the zero (0) at the end is because we need to close the polygon, so we go back to the 1st vertex.
+        //Calling the markers position was too long and confusing so I split it into these vars
+        //xPosNow = x(n); xPosNext = x(n + 1) and yPosNow = y(n); yPosNext = y(n + 1)
+        double xPosNow, xPosNext, yPosNow, yPosNext;
 
+        //Source? MATH! (http://www.mathopenref.com/coordpolygonarea.html)
         for(int i = 0; i < markers.size(); i++){
+            //sum each vertex
             if(i < markers.size() - 1){
-                coordSum += (markers.get(i).getPosition().latitude * markers.get(i + 1).getPosition().longitude) + (markers.get(i).getPosition().longitude * markers.get(i + 1).getPosition().latitude);
+                xPosNow = markers.get(i).getPosition().latitude;
+                yPosNext = markers.get(i + 1).getPosition().longitude;
+                yPosNow = markers.get(i).getPosition().longitude;
+                xPosNext = markers.get(i + 1).getPosition().latitude;
+                coordSum += (xPosNow * yPosNext) - (yPosNow * xPosNext);
             }else{
-                coordSum += (markers.get(i).getPosition().latitude * markers.get(0).getPosition().longitude) + (markers.get(i).getPosition().longitude * markers.get(0).getPosition().latitude);
+                //now add the sum for the last vertex, a.k.a. "close the polygon yooo!"
+
+                xPosNow = markers.get(i).getPosition().latitude;
+                yPosNext = markers.get(0).getPosition().longitude;
+                yPosNow = markers.get(i).getPosition().longitude;
+                xPosNext = markers.get(0).getPosition().latitude;
+                coordSum += (xPosNow * yPosNext) - (yPosNow * xPosNext);
             }
         }
 
+        //Ok now give me the total area
         totalArea = Math.abs(coordSum / 2);
 
-        return Math.floor(totalArea);
+        return totalArea;
+    }
+
+    /**
+     * Method name: getArea
+     * Modifier:    private
+     * Purpose:     Calculates the area of the polygon using SphericalUtil (in square mts)
+     * Parameters:  ArrayList<Marker>
+     * Returns:     double
+     */
+    private double getArea(ArrayList<Marker> markers){
+        double totalAreaOut = 0;
+        //Get all the latitudes and longitudes from the markers
+        ArrayList<LatLng> markersPositions = new ArrayList<>();
+
+        for(int i = 0; i < markers.size(); i++){
+            markersPositions.add(new LatLng(markers.get(i).getPosition().latitude, markers.get(i).getPosition().longitude));
+        }
+
+        //Calculate the area with the Google Maps library:
+        totalAreaOut = SphericalUtil.computeArea(markersPositions);
+
+        return totalAreaOut;
+    }
+
+    /**
+     * Method name: triCentroid
+     * Modifier:    private
+     * Purpose:     Calculates the centroid of any triangle
+     * Parameters:  ArrayList<Marker>
+     * Returns:     void
+     */
+    private void triCentroid(ArrayList<Marker> markers){
+        //This one takes less time, we only have three vertices in a triangle
+        //We just need the vertices sums and the centers
+        double sumX = 0, sumY = 0, centX = 0, centY = 0;
+        //Remember to display the area in kms, so format the number properly please
+        double areaInKm = getArea(markers) / 1000;
+        DecimalFormat kms = new DecimalFormat("#.000");
+        //The string to display on the marker
+        String printArea = kms.format(areaInKm);
+
+        //Source? Yes, our old friend MATH! (http://www.mathopenref.com/coordcentroid.html)
+        for(int i = 0; i < markers.size(); i++){
+            sumX += markers.get(i).getPosition().latitude;
+            sumY += markers.get(i).getPosition().longitude;
+        }
+
+        //Then, divide it by 3 since it's a triangle
+        centX = sumX / markers.size();
+        centY = sumY / markers.size();
+
+        //Setup the marker options
+        centroid = new MarkerOptions()
+                .draggable(false)
+                .title("Area: " + printArea + " Sq Km")
+                .position(new LatLng(centX, centY));
+        mMap.addMarker(centroid);
     }
 
     /**
      * Method name: regCentroid
      * Modifier:    private
-     * Purpose:     Calculates the centroid of an irregular polygon, including triangles
+     * Purpose:     Calculates the centroid of any polygon
      * Parameters:  ArrayList<Marker>
      * Returns:     void
      */
     private void regCentroid(ArrayList<Marker> markers){
-        double originX = 0, originY = 0, centX = 0, centY = 0;
+        //Yes, we are looping again among the vertices so we need those position vars once more
+        double xPosNow, xPosNext, yPosNow, yPosNext, vertXSum = 0, vertYSum = 0, centX = 0, centY = 0;
+        double ourPolyArea = getArea(markers);
+        //Display area in km, and format the number
+        double areaInKm = getArea(markers) / 1000;
+        DecimalFormat kms = new DecimalFormat("#.000");
+        //The string to display on the marker
+        String printArea = kms.format(areaInKm);
 
+        //Now, given the formula to find C(x) and C(y):
+        //C(x) = { [x(n) + x(n + 1)] * [ (x(n) * y(n + 1)) - (x(n + 1) * y(n)) ] } / Area * 6
+        //C(y) = { [y(n) + y(n + 1)] * [ (x(n) * y(n + 1)) - (x(n + 1) * y(n)) ] } / Area * 6
+        //we loop, get the sums, and remember that the last vertex is zero to close our polygon
+
+        //Source? You guessed again, MATH! (https://en.wikipedia.org/wiki/Centroid#Centroid_of_a_polygon)
         for(int i = 0; i < markers.size(); i++){
-            originX += markers.get(i).getPosition().latitude;
-            originY += markers.get(i).getPosition().longitude;
+            //sum each vertex
+            if(i < markers.size() - 1){
+                xPosNow = markers.get(i).getPosition().latitude;
+                yPosNext = markers.get(i + 1).getPosition().longitude;
+                yPosNow = markers.get(i).getPosition().longitude;
+                xPosNext = markers.get(i + 1).getPosition().latitude;
+
+                //Bring me that beautiful (long) formula here and execute it
+                //For C(x) vertices needed, vertXSum
+                vertXSum += (xPosNow + xPosNext) * ( (xPosNow * yPosNext) - (xPosNext * yPosNow) );
+                //For C(y) vertices needed, vertXSum
+                vertYSum += (yPosNow + yPosNext) * ( (xPosNow * yPosNext) - (xPosNext * yPosNow) );
+            }else{
+                //Close this polygon
+                xPosNow = markers.get(i).getPosition().latitude;
+                yPosNext = markers.get(0).getPosition().longitude;
+                yPosNow = markers.get(i).getPosition().longitude;
+                xPosNext = markers.get(0).getPosition().latitude;
+
+                //For C(x) vertices needed, vertXSum
+                vertXSum += (xPosNow + xPosNext) * ( (xPosNow * yPosNext) - (xPosNext * yPosNow) );
+                //For C(y) vertices needed, vertXSum
+                vertYSum += (yPosNow + yPosNext) * ( (xPosNow * yPosNext) - (xPosNext * yPosNow) );
+            }
         }
 
-        centX = originX / markers.size();
-        centY = originY / markers.size();
+        //Now, calculate the Centroid for X and Y
+        centX = vertXSum / (ourPolyArea * 6);
+        centY = vertYSum / (ourPolyArea * 6);
 
         //Setup the marker options
         centroid = new MarkerOptions()
                 .draggable(false)
-                .title("Area: " + calculateArea(markers))
+                .title("Area: " + printArea + " Sq Km")
                 .position(new LatLng(centX, centY));
         mMap.addMarker(centroid);
     }
