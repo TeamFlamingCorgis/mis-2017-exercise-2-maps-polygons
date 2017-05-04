@@ -38,15 +38,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     //Declare elements here
     private GoogleMap mMap;
     public static final String MAPS_AND_POLYGONS_PREFS = "MapsAndPolygonsPrefs";
-    public static final String markerTitle = "markerTitleKey";
-    public static final String markerLocation = "markerLocationKey";
+    public static final String markerTitle = "markerTitle";
+    public static final String markerLocation = "markerLocation";
     SharedPreferences sharedprefs;
     private Button goToBtn;
     private Button polygonBtn;
     private EditText et;
     private ArrayList<Marker> polyMarkers;
-    MarkerOptions tricentroid, regcentroid;
-    Marker triCenter, regCenter;
+    MarkerOptions findCentroid, regcentroid;
+    Marker markerCenter, regCenter;
     private Polygon shape;
     private int polyPoints;
     private boolean isDrawing = false;
@@ -68,7 +68,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         goToBtn = (Button) findViewById(R.id.goBtn);
         polygonBtn = (Button) findViewById(R.id.createPolyBtn);
         et=(EditText) findViewById(R.id.inputTxt);
-        sharedprefs = MapsActivity.this.getSharedPreferences(MAPS_AND_POLYGONS_PREFS, Context.MODE_PRIVATE);
+//        Context context = getActivity();
+//        SharedPreferences sharedprefs = context.getSharedPreferences(
+//                getString(R.string.preference_file_key), Context.MODE_PRIVATE);
+        sharedprefs = this.getSharedPreferences(MAPS_AND_POLYGONS_PREFS, Context.MODE_PRIVATE);
 
     }
 
@@ -253,24 +256,35 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         //Adds marker
         polyMarkers.add(mMap.addMarker(options));
-        //Writes it on the SharedPreferences
-//        writeToPrefs(polyMarkers);
-        for(int i = 0; i < polyMarkers.size(); i++){
-            writeToPrefs(polyMarkers.get(i));
-        }
         //Updates the number of points based on the number of markers
         setPolygonPoints(polyMarkers.size());
     }
 
-    public void writeToPrefs(Marker markers){
+    /**
+     * *****************************************************
+     * Method name: writeToPrefs
+     * Modifier:    public
+     * Purpose:     Writes markers title and location to the SharedPreferences xml
+     * Parameters:  Marker, String
+     * Returns:     void
+     * *****************************************************
+     */
+    public void writeToPrefs(Marker markers, String label){
         //Makes an editor to add ingo into the SharedPreferences
         SharedPreferences.Editor editor = sharedprefs.edit();
 
+        //if Label is null then it's a vertex
+        if(label == null){
+            label = "vertex";
+        }
+
         //Writes each marker info into the sharedpreferences
-        editor.putString(markerTitle, markers.getTitle());
-        editor.putString(markerLocation, markers.getPosition().toString());
-        //Commits the changes
-        editor.apply();
+        //We write the id to append it (same name is overwritten)
+        //and the label is to know if it's a vertex or the centroid
+        editor.putString(markerTitle + "_" + markers.getId() + "_" + label, markers.getTitle());
+        editor.putString(markerLocation + "_" + markers.getId() + "_" + label, markers.getPosition().toString());
+
+        //save it
         editor.commit();
 
     }
@@ -317,24 +331,32 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      * *****************************************************
      */
     public void createPolygon (View view) throws Exception {
-        isDrawing = !isDrawing;
+        if(polyMarkers.size() > 0){
+            isDrawing = !isDrawing;
+        }else{
+            Toast.makeText(this, "Long press anywhere to make the 1st marker", Toast.LENGTH_LONG).show();
+        }
 
         if (isDrawing) {
-            polygonBtn.setText("End Polygon");
-            drawPolygon(getPolygonPoints(), polyMarkers);
+                polygonBtn.setText("End Polygon");
+                drawPolygon(getPolygonPoints(), polyMarkers);
 
-            //Sets the marker for the center of the polygon
-            if(polyMarkers.size() == 3){
-                triCentroid(polyMarkers);
-            }else if(polyMarkers.size() > 3){
-                triCentroid(polyMarkers);
-            }else{
-                Toast.makeText(this, "THAT'S NOT A POLYGON!!", Toast.LENGTH_LONG).show();
-            }
+                //Sets the marker for the center of the polygon
+                if(polyMarkers.size() >= 3){
+                    findCentroid(polyMarkers);
+                }else{
+                    Toast.makeText(this, "THAT'S NOT A POLYGON!!", Toast.LENGTH_LONG).show();
+                }
 
+                //Writes it on the SharedPreferences
+                for(int i = 0; i < polyMarkers.size(); i++){
+                    writeToPrefs(polyMarkers.get(i), null);
+                }
         } else {
-            polygonBtn.setText("Start Polygon");
-            removeEverything();
+                polygonBtn.setText("Start Polygon");
+                if(polyMarkers.size() > 0){
+                    removeEverything();
+                }
         }
     }
 
@@ -348,15 +370,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      * *****************************************************
      */
     private void drawPolygon(int polyPoints, ArrayList<Marker> markers) {
-        PolygonOptions options = new PolygonOptions()
-                .fillColor(0x330000FF)
-                .strokeWidth(3)
-                .strokeColor(Color.BLUE);
+        if(markers.size() != 0){
+            PolygonOptions options = new PolygonOptions()
+                    .fillColor(0x330000FF)
+                    .strokeWidth(3)
+                    .strokeColor(Color.BLUE);
 
-        for (int i = 0; i < polyPoints; i++) {
-            options.add(markers.get(i).getPosition());
+            for (int i = 0; i < polyPoints; i++) {
+                options.add(markers.get(i).getPosition());
+            }
+            shape = mMap.addPolygon(options);
+        }else{
+            Toast.makeText(this, "THAT'S NOT A POLYGON!!", Toast.LENGTH_LONG).show();
         }
-        shape = mMap.addPolygon(options);
     }
 
     /**
@@ -459,15 +485,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     /**
      * *****************************************************
-     * Method name: triCentroid
+     * Method name: findCentroid
      * Modifier:    private
-     * Purpose:     Calculates the centroid of any triangle
+     * Purpose:     Calculates the centroid of any polygon
      * Parameters:  ArrayList<Marker>
      * Returns:     void
      * *****************************************************
      */
-    private void triCentroid(ArrayList<Marker> markers){
-        //This one takes less time, we only have three vertices in a triangle
+    private void findCentroid(ArrayList<Marker> markers){
+
         //We just need the vertices sums and the centers
         double sumX = 0, sumY = 0, centX = 0, centY = 0;
         //Remember to display the area in kms, so format the number properly please
@@ -482,84 +508,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             sumY += markers.get(i).getPosition().longitude;
         }
 
-        //Then, divide it by 3 since it's a triangle
+        //Then, divide it by the number of vertices
         centX = sumX / markers.size();
         centY = sumY / markers.size();
 
         //Setup the marker options
-        tricentroid = new MarkerOptions()
+        findCentroid = new MarkerOptions()
                 .draggable(false)
                 .title("Area: " + printArea + " Sq Km")
                 .position(new LatLng(centX, centY));
-        triCenter = mMap.addMarker(tricentroid);
+        markerCenter = mMap.addMarker(findCentroid);
 
         //Writes it on the SharedPreferences
-        writeToPrefs(triCenter);
-    }
-
-    /**
-     * *****************************************************
-     * Method name: regCentroid
-     * Modifier:    private
-     * Purpose:     Calculates the centroid of any polygon
-     * Parameters:  ArrayList<Marker>
-     * Returns:     void
-     * *****************************************************
-     */
-    private void regCentroid(ArrayList<Marker> markers){
-        //Yes, we are looping again among the vertices so we need those position vars once more
-        double xPosNow, xPosNext, yPosNow, yPosNext, vertXSum = 0, vertYSum = 0, centX = 0, centY = 0;
-        double ourPolyArea = getArea(markers);
-        //Display area in km, and format the number
-        double areaInKm = getArea(markers) / 1000;
-        DecimalFormat kms = new DecimalFormat("#.000");
-        //The string to display on the marker
-        String printArea = kms.format(areaInKm);
-
-        //Now, given the formula to find C(x) and C(y):
-        //C(x) = { [x(n) + x(n + 1)] * [ (x(n) * y(n + 1)) - (x(n + 1) * y(n)) ] } / Area * 6
-        //C(y) = { [y(n) + y(n + 1)] * [ (x(n) * y(n + 1)) - (x(n + 1) * y(n)) ] } / Area * 6
-        //we loop, get the sums, and remember that the last vertex is zero to close our polygon
-
-        //Source? You guessed again, MATH! (https://en.wikipedia.org/wiki/Centroid#Centroid_of_a_polygon)
-        for(int i = 0; i < markers.size(); i++){
-            //sum each vertex
-            if(i < markers.size() - 1){
-                xPosNow = markers.get(i).getPosition().latitude;
-                yPosNext = markers.get(i + 1).getPosition().longitude;
-                yPosNow = markers.get(i).getPosition().longitude;
-                xPosNext = markers.get(i + 1).getPosition().latitude;
-
-                //Bring me that beautiful (long) formula here and execute it
-                //For C(x) vertices needed, vertXSum
-                vertXSum += (xPosNow + xPosNext) * ( (xPosNow * yPosNext) - (xPosNext * yPosNow) );
-                //For C(y) vertices needed, vertXSum
-                vertYSum += (yPosNow + yPosNext) * ( (xPosNow * yPosNext) - (xPosNext * yPosNow) );
-            }else{
-                //Close this polygon
-                xPosNow = markers.get(i).getPosition().latitude;
-                yPosNext = markers.get(0).getPosition().longitude;
-                yPosNow = markers.get(i).getPosition().longitude;
-                xPosNext = markers.get(0).getPosition().latitude;
-
-                //For C(x) vertices needed, vertXSum
-                vertXSum += (xPosNow + xPosNext) * ( (xPosNow * yPosNext) - (xPosNext * yPosNow) );
-                //For C(y) vertices needed, vertXSum
-                vertYSum += (yPosNow + yPosNext) * ( (xPosNow * yPosNext) - (xPosNext * yPosNow) );
-            }
-        }
-
-        //Now, calculate the Centroid for X and Y
-        centX = vertXSum / (ourPolyArea * 6);
-        centY = vertYSum / (ourPolyArea * 6);
-
-        //Setup the marker options
-        regcentroid = new MarkerOptions()
-                .draggable(false)
-                .title("Area: " + printArea + " Sq Km")
-                .position(new LatLng(centX, centY));
-        regCenter = mMap.addMarker(regcentroid);
-        writeToPrefs(regCenter);
+        writeToPrefs(markerCenter, "Centroid");
     }
 
 

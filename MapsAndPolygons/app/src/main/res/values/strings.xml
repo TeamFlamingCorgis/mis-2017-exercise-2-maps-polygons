@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">MapsAndPolygons</string>
     <string name="title_activity_maps">MapsAndPolygons</string>
+    <string name="preference_file_key">savedPrefs</string>
 </resources>
