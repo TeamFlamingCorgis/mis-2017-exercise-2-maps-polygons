@@ -7,6 +7,7 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -29,9 +30,12 @@ import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.maps.android.SphericalUtil;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.StringTokenizer;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
@@ -406,60 +410,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     /**
-     * Method name: calculateAreaPolygon
-     * Modifier:    private
-     * Purpose:     Calculates the area of the polygon. It also works for triangles!
-     * Parameters:  ArrayList<Marker>
-     * Returns:     double
-     * *****************************************************
-     * ******************* NOTES!!!! ***********************
-     * MADE BUT NEVER USED! WHY? WELL:
-     * (1)  Returns a vector and not the actual area in mts.
-     * (2)  This works on a planar polygon, but the Earth is
-     *      round (wow, I know) and that changes everything.
-     * (3)  I'm keeping it because I did my research and my
-     *      time is valuable (I got to love this math!)
-     * *****************************************************
-     */
-    private double calculateAreaPolygon(ArrayList<Marker> markers) {
-        //Variables for the area and the sum of the coordinates
-        double totalArea = 0, coordSum = 0;
-        //Now we need to take each vertex (given by the markers coordinates) and then
-        //plug it into the formula for Area of a Polygon:
-        // Area = abs( (vertex coordinates sum) / 2 ), in which
-        //Vertex Coord Sum = [( x(n) * y(n + 1) ) - ( y(n) * x(n + 1) ) + ... +  x(n) * y(0) ) - ( y(n) * x(0) )]
-        // ^^^ and the zero (0) at the end is because we need to close the polygon, so we go back to the 1st vertex.
-        //Calling the markers position was too long and confusing so I split it into these vars
-        //xPosNow = x(n); xPosNext = x(n + 1) and yPosNow = y(n); yPosNext = y(n + 1)
-        double xPosNow, xPosNext, yPosNow, yPosNext;
-
-        //Source? MATH! (http://www.mathopenref.com/coordpolygonarea.html)
-        for(int i = 0; i < markers.size(); i++){
-            //sum each vertex
-            if(i < markers.size() - 1){
-                xPosNow = markers.get(i).getPosition().latitude;
-                yPosNext = markers.get(i + 1).getPosition().longitude;
-                yPosNow = markers.get(i).getPosition().longitude;
-                xPosNext = markers.get(i + 1).getPosition().latitude;
-                coordSum += (xPosNow * yPosNext) - (yPosNow * xPosNext);
-            }else{
-                //now add the sum for the last vertex, a.k.a. "close the polygon yooo!"
-
-                xPosNow = markers.get(i).getPosition().latitude;
-                yPosNext = markers.get(0).getPosition().longitude;
-                yPosNow = markers.get(i).getPosition().longitude;
-                xPosNext = markers.get(0).getPosition().latitude;
-                coordSum += (xPosNow * yPosNext) - (yPosNow * xPosNext);
-            }
-        }
-
-        //Ok now give me the total area
-        totalArea = Math.abs(coordSum / 2);
-
-        return totalArea;
-    }
-
-    /**
      * *****************************************************
      * Method name: getArea
      * Modifier:    private
@@ -475,10 +425,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         for(int i = 0; i < markers.size(); i++){
             markersPositions.add(new LatLng(markers.get(i).getPosition().latitude, markers.get(i).getPosition().longitude));
+            Log.e("WHAT ", String.valueOf(markersPositions.get(i)));
         }
 
         //Calculate the area with the Google Maps library:
         totalAreaOut = SphericalUtil.computeArea(markersPositions);
+        Log.e("TOTAL AREA : ", String.valueOf(totalAreaOut));
 
         return totalAreaOut;
     }
@@ -497,10 +449,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //We just need the vertices sums and the centers
         double sumX = 0, sumY = 0, centX = 0, centY = 0;
         //Remember to display the area in kms, so format the number properly please
-        double areaInKm = getArea(markers) / 1000;
-        DecimalFormat kms = new DecimalFormat("#.000");
-        //The string to display on the marker
-        String printArea = kms.format(areaInKm);
+        double areaInKm = Math.max(0, getArea(markers) / 10000d);
+        BigDecimal bd = new BigDecimal(areaInKm);
+        bd = bd.setScale(3, RoundingMode.HALF_UP);
+
+        String printArea = String.valueOf(bd) + " km²";
 
         //Source? Yes, our old friend MATH! (http://www.mathopenref.com/coordcentroid.html)
         for(int i = 0; i < markers.size(); i++){
@@ -515,7 +468,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //Setup the marker options
         findCentroid = new MarkerOptions()
                 .draggable(false)
-                .title("Area: " + printArea + " Sq Km")
+                .title("Area: " + printArea)
                 .position(new LatLng(centX, centY));
         markerCenter = mMap.addMarker(findCentroid);
 
